@@ -18,7 +18,7 @@ INITIAL_WORKING_DIRECTORY = os.getcwd()
 def set_up(run_dir):
     import gym
     from baselines import deepq
-    from source.learning_monitor import LearningMonitor
+    from source.learning_monitor import LearningMonitor, learning_monitor_builder
 
     env = gym.make("LunarLander-v2")
 
@@ -26,7 +26,7 @@ def set_up(run_dir):
 
     dir = MOCK_DIR + CURRENT + run_dir
 
-    return gym, deepq, LearningMonitor, env, model, dir
+    return env, model, dir, gym, deepq, LearningMonitor, learning_monitor_builder
 
 
 def teardown():
@@ -97,7 +97,7 @@ rl_agent_config = {
 
 
 def test_learning_monitor(prep_test):
-    (gym, deepq, LearningMonitor, env, model, dir) = prep_test
+    (env, model, dir, gym, deepq, LearningMonitor, learning_monitor_builder) = prep_test
 
     """ ------- gym env wrapper ------------------------------------------------------------------------------------ """
     learning_monitor_config = {
@@ -105,9 +105,11 @@ def test_learning_monitor(prep_test):
         'collect_ep_data_every_callable': False
     }
 
-    env = LearningMonitor(env, dir, learning_monitor_config, force=False)
+    env, learning_data_collector = learning_monitor_builder(env, dir, learning_monitor_config, force=False)
 
     """ ------- learning wrapper ----------------------------------------------------------------------------------- """
+
+    # TODO: remove and let the returned  'learning_data_collector' object from 'learning_monitor_builder' do is job
     def learning_data_collector(lcl, _glb):
         render = getattr(lcl['env'], 'render')
         if lcl['t'] >= rl_agent_config['max_timesteps'] + 1:

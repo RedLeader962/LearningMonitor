@@ -11,7 +11,7 @@ class LearningDataCollector(object):
         # @AssociationKind Aggregation
 
     def __call__(self, lcl, _glb):
-        pass
+        print(">>> LearningDataCollector call")
 
     def teardown(self):
         pass

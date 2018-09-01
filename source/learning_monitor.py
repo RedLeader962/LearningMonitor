@@ -86,9 +86,10 @@ class LearningMonitor(monitor.Monitor):
         self.file_prefix = monitor.FILE_PREFIX
         self.file_infix = '{}.{}'.format(self._monitor_id, uid if uid else os.getpid())
 
-        # TODO
+        # Note: 'self.stats_recorder' is used by the parent class... we can not change is name
         self.stats_recorder = LearningStatRecorder(directory,
-                                                   '{}.episode_batch.{}'.format(self.file_prefix, self.file_infix),
+                                                   '{}.episode_batch.{}'.format(self.file_prefix,
+                                                                                self.file_infix),
                                                    self.learning_monitor_config,
                                                    autoreset=self.env_semantics_autoreset,
                                                    env_id=env_id)
@@ -100,7 +101,12 @@ class LearningMonitor(monitor.Monitor):
         if mode is not None:
             self._set_mode(mode)
 
-        
-        """@ReturnType (env, LearningDataCollector)"""
-        # return self, self.stats_recorder.create_collector()
+
+def learning_monitor_builder(env, directory, learning_monitor_config, plot_training_in_real_time=False, force=False,
+                             resume=False, write_upon_reset=False, uid=None, mode=None):
+
+    monitored_env = LearningMonitor(env, directory, learning_monitor_config, plot_training_in_real_time, force,
+                                    resume, write_upon_reset, uid, mode)
+    learning_data_collector = monitored_env.stats_recorder.create_collector()
+    return monitored_env, learning_data_collector
 
