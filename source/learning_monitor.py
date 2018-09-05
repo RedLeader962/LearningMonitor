@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 from gym.wrappers import monitor
 from monitoring.video_recorder.image_sequence_as_array_recorder import ImageSequenceAsArrayRecorder
-from monitoring.stats_recorder.learning_stat_recorder import LearningStatRecorder
+from monitoring.stats_recorder import LearningStatRecorder
 
 from gym import Wrapper
 from gym import error, version, logger
@@ -101,10 +101,45 @@ class LearningMonitor(monitor.Monitor):
         if mode is not None:
             self._set_mode(mode)
 
+    def get_learning_data_collector(self):
+        return self.stats_recorder.create_collector()
+
+    @classmethod
+    def build_collectors(cls, env, directory, learning_monitor_config, plot_training_in_real_time=False, force=False,
+                         resume=False, write_upon_reset=False, uid=None, mode=None):
+        """
+        Convenient Alternate constructor building the monitored env & the learning_data_collector object
+        :param env:
+        :param directory:
+        :param learning_monitor_config:
+        :param plot_training_in_real_time:
+        :param force:
+        :param resume:
+        :param write_upon_reset:
+        :param uid:
+        :param mode:
+        :return: the wrapped env & the learning_data_collector object
+        """
+        monitored_env = cls(env, directory, learning_monitor_config, plot_training_in_real_time, force,
+                                        resume, write_upon_reset, uid, mode)
+        return monitored_env, monitored_env.get_learning_data_collector()
+
 
 def learning_monitor_builder(env, directory, learning_monitor_config, plot_training_in_real_time=False, force=False,
                              resume=False, write_upon_reset=False, uid=None, mode=None):
-
+    """
+    Convenient function for building the monitored env & the learning_data_collector object
+    :param env:
+    :param directory:
+    :param learning_monitor_config:
+    :param plot_training_in_real_time:
+    :param force:
+    :param resume:
+    :param write_upon_reset:
+    :param uid:
+    :param mode:
+    :return: the wrapped env & the learning_data_collector object
+    """
     monitored_env = LearningMonitor(env, directory, learning_monitor_config, plot_training_in_real_time, force,
                                     resume, write_upon_reset, uid, mode)
     learning_data_collector = monitored_env.stats_recorder.create_collector()

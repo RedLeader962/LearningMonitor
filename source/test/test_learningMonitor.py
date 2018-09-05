@@ -4,7 +4,13 @@ import sys
 
 import pytest
 
+import gym
+from baselines import deepq
+import uuid
+
 from experiment_directory_tools import create_run_directory, clean_result_directory
+from source.learning_monitor import LearningMonitor, learning_monitor_builder
+from source.monitoring.stats_recorder import EpisodeDataClass, LearningDataCollector, LearningStatRecorder
 
 
 MOCK_DIR = "./mock_up_directory"
@@ -16,17 +22,13 @@ INITIAL_WORKING_DIRECTORY = os.getcwd()
 
 
 def set_up(run_dir):
-    import gym
-    from baselines import deepq
-    from source.learning_monitor import LearningMonitor, learning_monitor_builder
-
     env = gym.make("LunarLander-v2")
 
     model = deepq.models.mlp([10, 10], layer_norm=True)
 
     dir = MOCK_DIR + CURRENT + run_dir
 
-    return env, model, dir, gym, deepq, LearningMonitor, learning_monitor_builder
+    return env, model, dir
 
 
 def teardown():
@@ -36,7 +38,7 @@ def teardown():
 @pytest.fixture(scope="function")
 def prep_test():
     clean_result_directory(MOCK_DIR)
-    run_dir = create_run_directory(MOCK_DIR, "unit_test")
+    run_dir = create_run_directory(MOCK_DIR, "unit_test", UUID=uuid.uuid4())
     yield set_up(run_dir)
 
 
@@ -96,8 +98,32 @@ rl_agent_config = {
 }
 
 
+def test_learning_monitor_convenience_builder_fct(prep_test):
+    (env, model, dir) = prep_test
+
+    """ ------- gym env wrapper ------------------------------------------------------------------------------------ """
+    learning_monitor_config = {'collect_ep_data_every_callable': False}
+
+    env, learning_data_collector = learning_monitor_builder(env, dir, learning_monitor_config, force=False)
+
+    assert isinstance(env, gym.Env)
+    assert isinstance(learning_data_collector, LearningDataCollector)
+
+
+def test_learning_monitor_alt_constructor(prep_test):
+    (env, model, dir) = prep_test
+
+    """ ------- gym env wrapper ------------------------------------------------------------------------------------ """
+    learning_monitor_config = {'collect_ep_data_every_callable': False}
+
+    env, learning_data_collector = LearningMonitor.build_collectors(env, dir, learning_monitor_config, force=False)
+
+    assert isinstance(env, gym.Env)
+    assert isinstance(learning_data_collector, LearningDataCollector)
+
+
 def test_learning_monitor(prep_test):
-    (env, model, dir, gym, deepq, LearningMonitor, learning_monitor_builder) = prep_test
+    (env, model, dir) = prep_test
 
     """ ------- gym env wrapper ------------------------------------------------------------------------------------ """
     learning_monitor_config = {
@@ -105,7 +131,7 @@ def test_learning_monitor(prep_test):
         'collect_ep_data_every_callable': False
     }
 
-    env, learning_data_collector = learning_monitor_builder(env, dir, learning_monitor_config, force=False)
+    env, learning_data_collector = LearningMonitor.build_collectors(env, dir, learning_monitor_config, force=False)
 
     """ ------- learning wrapper ----------------------------------------------------------------------------------- """
 
@@ -117,32 +143,31 @@ def test_learning_monitor(prep_test):
         return None
 
     """ ------- start learning ------------------------------------------------------------------------------------- """
-    act = deepq.learn(
-        env,
-        q_func=model,
-        lr=rl_agent_config['lr'],
-        max_timesteps=rl_agent_config['max_timesteps'],
-        buffer_size=rl_agent_config['buffer_size'],
-        exploration_fraction=rl_agent_config['exploration_fraction'],
-        exploration_final_eps=rl_agent_config['exploration_final_eps'],
+    act = deepq.learn(env,
+                      q_func=model,
+                      lr=rl_agent_config['lr'],
+                      max_timesteps=rl_agent_config['max_timesteps'],
+                      buffer_size=rl_agent_config['buffer_size'],
+                      exploration_fraction=rl_agent_config['exploration_fraction'],
+                      exploration_final_eps=rl_agent_config['exploration_final_eps'],
 
-        train_freq=rl_agent_config['train_freq'],
-        batch_size=rl_agent_config['batch_size'],
-        print_freq=rl_agent_config['print_freq'],
+                      train_freq=rl_agent_config['train_freq'],
+                      batch_size=rl_agent_config['batch_size'],
+                      print_freq=rl_agent_config['print_freq'],
 
-        checkpoint_freq=rl_agent_config['checkpoint_freq'],
-        # checkpoint_path=rl_agent_config['checkpoint_path'],
-        learning_starts=rl_agent_config['learning_starts'],
-        gamma=rl_agent_config['gamma'],
-        target_network_update_freq=rl_agent_config['target_network_update_freq'],
-        prioritized_replay=rl_agent_config['prioritized_replay'],
-        prioritized_replay_alpha=rl_agent_config['prioritized_replay_alpha'],
-        prioritized_replay_beta0=rl_agent_config['prioritized_replay_beta0'],
-        prioritized_replay_beta_iters=rl_agent_config['prioritized_replay_beta_iters'],
-        prioritized_replay_eps=rl_agent_config['prioritized_replay_eps'],
-        param_noise=rl_agent_config['param_noise'],
-        callback=learning_data_collector
-    )
+                      checkpoint_freq=rl_agent_config['checkpoint_freq'],
+                      # checkpoint_path=rl_agent_config['checkpoint_path'],
+                      learning_starts=rl_agent_config['learning_starts'],
+                      gamma=rl_agent_config['gamma'],
+                      target_network_update_freq=rl_agent_config['target_network_update_freq'],
+                      prioritized_replay=rl_agent_config['prioritized_replay'],
+                      prioritized_replay_alpha=rl_agent_config['prioritized_replay_alpha'],
+                      prioritized_replay_beta0=rl_agent_config['prioritized_replay_beta0'],
+                      prioritized_replay_beta_iters=rl_agent_config['prioritized_replay_beta_iters'],
+                      prioritized_replay_eps=rl_agent_config['prioritized_replay_eps'],
+                      param_noise=rl_agent_config['param_noise'],
+                      callback=learning_data_collector
+                      )
 
     """ ------- terminate learning """
     print("Saving model to LunarLander_OpenAI_baseline_model_OpenAI_baseline_model.pkl")

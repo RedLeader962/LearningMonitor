@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
-from monitoring.stats_recorder import learning_stat_recorder
-from monitoring.stats_recorder import episode_data_class
+
+from monitoring.stats_recorder import EpisodeDataClass
 
 
 class LearningDataCollector(object):
