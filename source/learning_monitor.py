@@ -13,6 +13,28 @@ from gym.utils.json_utils import json_encode_np
 
 class LearningMonitor(monitor.Monitor):
     def __init__(self, env, directory, learning_monitor_config, plot_training_in_real_time=False, force=False, resume=False, write_upon_reset=False, uid=None, mode=None):
+        """
+        Wrap a OpenAi monitoring object around a 'env'.
+        You must call explicitly the 'get_learning_data_collector' method if you want to monitor the learning algorithm
+        or use the alternate constructor.
+
+            ex:
+                monitored_env, learning_data_collector =  LearningMonitor.build_collectors(...)
+
+        Note:
+            - 'LearningMonitor' turn off realtime env rendering since it's result is push to file
+            - To look at rendered run, call the 'TrainingMonitorReader'
+
+        :param env: a OpenAi gym environment
+        :param directory:
+        :param learning_monitor_config: a config dict
+        :param plot_training_in_real_time: plot the training graph to screen in real time
+        :param force:
+        :param resume:
+        :param write_upon_reset:
+        :param uid:
+        :param mode:
+        """
         super(monitor.Monitor, self).__init__(env)
 
         self.learning_monitor_config = learning_monitor_config
@@ -30,12 +52,37 @@ class LearningMonitor(monitor.Monitor):
         self._start(directory, learning_monitor_config['collect_ep_data_every_callable'], force, resume,
                     write_upon_reset, uid, mode)
 
-    def _start(self, directory, collect_ep_data_callable=None, force=False, resume=False, write_upon_reset=False, uid=None, mode=None):
+    @classmethod
+    def build_collectors(cls, env, directory, learning_monitor_config, plot_training_in_real_time=False,
+                         force=False,
+                         resume=False, write_upon_reset=False, uid=None, mode=None):
+        """
+        Convenient Alternate constructor that build the monitored env & the learning_data_collector object in one call
+
+        :param env:
+        :param directory:
+        :param learning_monitor_config:
+        :param plot_training_in_real_time:
+        :param force:
+        :param resume:
+        :param write_upon_reset:
+        :param uid:
+        :param mode:
+        :return: the wrapped env & the learning_data_collector object
+        """
+        monitored_env = cls(env, directory, learning_monitor_config, plot_training_in_real_time, force,
+                            resume, write_upon_reset, uid, mode)
+        return monitored_env, monitored_env.get_learning_data_collector()
+
+    def get_learning_data_collector(self):
+        return self.stats_recorder.create_collector()
+
+    def _start(self, directory, collect_ep_data_every_callable=None, force=False, resume=False, write_upon_reset=False, uid=None, mode=None):
         """Start monitoring.
         
                 Args:
                     directory (str): A per-training run directory where to record stats.
-                    collect_ep_data_callable (Optional[function, False]): function that takes in the index of the episode and outputs a boolean, indicating whether we should record a data on this episode. The default (for collect_ep_data_callable is None) is to take perfect cubes, capped at 1000. False disables data recording.
+                    collect_ep_data_every_callable (Optional[function, False]): function that takes in the index of the episode and outputs a boolean, indicating whether we should record a data on this episode. The default (for collect_ep_data_callable is None) is to take perfect cubes, capped at 1000. False disables data recording.
                     force (bool): Clear out existing training data from this directory (by deleting every file prefixed with "openaigym.").
                     resume (bool): Retain the training data already in this directory, which will be merged with our new data
                     write_upon_reset (bool): Write the manifest file on each reset. (This is currently a JSON file, so writing it is somewhat expensive.)
@@ -57,14 +104,14 @@ class LearningMonitor(monitor.Monitor):
             else:
                 os.makedirs(directory)
 
-        if collect_ep_data_callable is None:
-            collect_ep_data_callable = monitor.capped_cubic_video_schedule
-        elif collect_ep_data_callable == False:
-            collect_ep_data_callable = monitor.disable_videos
-        elif not callable(collect_ep_data_callable):
-            raise error.Error('You must provide a function, None, or False for video_callable, not {}: {}'.format(
-                type(collect_ep_data_callable), collect_ep_data_callable))
-        self.video_callable = collect_ep_data_callable
+        if collect_ep_data_every_callable is None:
+            collect_ep_data_every_callable = monitor.capped_cubic_video_schedule
+        elif collect_ep_data_every_callable == False:
+            collect_ep_data_every_callable = monitor.disable_videos
+        elif not callable(collect_ep_data_every_callable):
+            raise error.Error('You must provide a function, None, or False for collect_ep_data_every_callable'
+                              ', not {}: {}'.format(type(collect_ep_data_every_callable), collect_ep_data_every_callable))
+        self.video_callable = collect_ep_data_every_callable
 
         # Check on whether we need to clear anything
         if force:
@@ -101,29 +148,6 @@ class LearningMonitor(monitor.Monitor):
         if mode is not None:
             self._set_mode(mode)
 
-    def get_learning_data_collector(self):
-        return self.stats_recorder.create_collector()
-
-    @classmethod
-    def build_collectors(cls, env, directory, learning_monitor_config, plot_training_in_real_time=False, force=False,
-                         resume=False, write_upon_reset=False, uid=None, mode=None):
-        """
-        Convenient Alternate constructor building the monitored env & the learning_data_collector object
-        :param env:
-        :param directory:
-        :param learning_monitor_config:
-        :param plot_training_in_real_time:
-        :param force:
-        :param resume:
-        :param write_upon_reset:
-        :param uid:
-        :param mode:
-        :return: the wrapped env & the learning_data_collector object
-        """
-        monitored_env = cls(env, directory, learning_monitor_config, plot_training_in_real_time, force,
-                                        resume, write_upon_reset, uid, mode)
-        return monitored_env, monitored_env.get_learning_data_collector()
-
 
 def learning_monitor_builder(env, directory, learning_monitor_config, plot_training_in_real_time=False, force=False,
                              resume=False, write_upon_reset=False, uid=None, mode=None):
@@ -142,6 +166,6 @@ def learning_monitor_builder(env, directory, learning_monitor_config, plot_train
     """
     monitored_env = LearningMonitor(env, directory, learning_monitor_config, plot_training_in_real_time, force,
                                     resume, write_upon_reset, uid, mode)
-    learning_data_collector = monitored_env.stats_recorder.create_collector()
+    learning_data_collector = monitored_env.get_learning_data_collector()
     return monitored_env, learning_data_collector
 

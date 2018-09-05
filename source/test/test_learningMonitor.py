@@ -136,6 +136,7 @@ def test_learning_monitor(prep_test):
     """ ------- learning wrapper ----------------------------------------------------------------------------------- """
 
     # TODO: remove and let the returned  'learning_data_collector' object from 'learning_monitor_builder' do is job
+    # note: temporary fix
     def learning_data_collector(lcl, _glb):
         render = getattr(lcl['env'], 'render')
         if lcl['t'] >= rl_agent_config['max_timesteps'] + 1:
